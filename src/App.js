@@ -2,34 +2,44 @@ import React from'react';
 import './App.less';
 import { Game } from 'block_game'
 
-const wide_const = 20
-const high_const = 30
+const wide_const = 10
+const high_const = 20
 
 function App() {
   const game = React.useRef(null)
   const reqAFIndex = React.useRef(null)
+  const statusRef = React.useRef('pause')
+  const levelRef = React.useRef(2)
 
   const [minute, setMinute] = React.useState(0)
   const [second, setSecond] = React.useState(0)
   const [time, setTime] = React.useState(0)
-
-  const [containerFull, setContainerFull] = React.useState(false)
+  
   const [score, setScore] = React.useState(0)
-  const [level, setLevel] = React.useState(4)
   const [speedTiem, setSpeedTime] = React.useState(0)
 
   const [containerValue, setContainerValue] = React.useState(Array.from({length: high_const}).fill(0))
   const [nextSquareValue, setNextSquareValue] = React.useState([0, 0, 0, 0])
 
   React.useEffect(() => {
-    game.current = new Game(high_const, wide_const)
-    game.current.add_square()
+    if (score > 0 && score < 100){
+      levelRef.current = 1
+    }else if (score > 0 && score < 200){
+      levelRef.current = 2
+    }else if (score > 0 && score < 400){
+      levelRef.current = 3
+    }else if (score > 0 && score < 700){
+      levelRef.current = 4
+    }else if (score > 0 && score < 1100){
+      levelRef.current = 5
+    }else if (score > 0 && score < 1160){
+      levelRef.current = 6
+    }else if (score > 1160){
+      levelRef.current = 7
+    }
+  }, [score])
 
-    setContainerValue(game.current.current_matrix_value())
-    setNextSquareValue(game.current.get_square_value())
-  }, [])
-
-  const fn = React.useCallback(async () => {
+  const fn = () => {
     setTime(t => {
       const nowTime = new Date().getTime()
       const diffTime = nowTime - t
@@ -46,44 +56,69 @@ function App() {
       return t
     })
 
-    setSpeedTime(async (t) => {
+    setSpeedTime((t) => {
       const nowTime = new Date().getTime()
-      const diffTime = nowTime - await t
-      let l = await new Promise(resolve => { setLevel((level) => { resolve(level); return level})})
-      l = Math.min(l, 9)
-      if (diffTime >= 1000 * (1 - Math.log(l) / Math.log(10))) {
+      const diffTime = nowTime - t
+      const l = Math.min(levelRef.current, 100)
+      if (diffTime >= 1000 * (1 - Math.log(l) / Math.log(5.3))) {
         handleDown()
         return nowTime
       }
-      return await t
+      return t
     })
-    let isFull = await new Promise(resolve => { setContainerFull((isUfll) => { resolve(isUfll); return isUfll})})
+    const isFull = game.current.container_is_full()
     if (isFull) {
       alert('游戏结束！')
-    } else {
-      window.requestAnimationFrame(() => { fn()})
+    } else if (statusRef.current === 'play') {
+      reqAFIndex.current = window.requestAnimationFrame(fn)
     }
-  }, [])
+  }
 
   React.useEffect(() => {
-    setTime(Date.now())
-    setSpeedTime(Date.now())
-    fn()
     return () => {
       window.cancelAnimationFrame(reqAFIndex.current)
     }
   }, [])
 
+  const start = () => {
+    setTime(Date.now())
+    setSpeedTime(Date.now())
+    statusRef.current = 'play'
+    fn()
+  }
+
+  const play = () => {
+    if(!game.current || game.current.container_is_full()) {
+      setSecond(0)
+      setMinute(0)
+      setScore(0)
+      game.current = new Game(high_const, wide_const)
+      setContainerValue(game.current.current_matrix_value())
+      setNextSquareValue(game.current.get_square_value())
+
+      start()
+    } else {
+      start()
+    }
+  }
+  const tooglePlay = () => {
+    if (statusRef.current === 'play') {
+      statusRef.current = 'pause'
+    } else {
+      start()
+    }
+  }
+
   const upDateHandler = () => {
     setContainerValue(game.current.current_matrix_value())
     setNextSquareValue(game.current.get_square_value())
-    setContainerFull(game.current.container_is_full())
   }
 
   const handleDown = (event) => {
     const lenght = game.current.move_square_down();
     if(lenght > 0) {
-      setScore(score => score + lenght)
+      const c = Math.ceil(lenght * (Math.log(lenght) / Math.log(2) + 1))
+      setScore(score => score + c)
     }
     upDateHandler()
   }
@@ -120,7 +155,6 @@ function App() {
               return r
             }, [])
             .map((s, index) => {
-              // console.log('index=', index)
               return <div className={`item ${s === '1' ? 'active' : ''}`} key={index} />
             })
           }
@@ -169,6 +203,10 @@ function App() {
            <button className='counterclockwise' onClick={handleConterclockwise}>逆旋转</button>
         </div>
       </div>
+      <div className='playButtons'>
+           <button className='paly' onClick={tooglePlay}>暂停 / 恢复</button>
+           <button className='start_pause' onClick={play}>开始 / 从新开始</button>
+        </div>
       
     </div>
   );

@@ -8,7 +8,11 @@
 ```
 git clone https://github.com/Topgt/rust_block_game.git
 cd ./rust_block_game
+wasm-pack build
+cd ./pkg
 npm link
+
+cd ../..
 
 cd ../
 
